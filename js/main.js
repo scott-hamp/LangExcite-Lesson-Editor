@@ -1,7 +1,11 @@
 var xmlSourceTextArea;
 var xmlSource, xmlParser, xmlDoc;
 
-var loadButton, saveButton, addNodeButton, recordButton;
+var fileInput, fileInputFile;
+var fileInputFileSet = false;
+var fileReader = new FileReader();
+
+var addNodeButton, recordButton;
 
 var transcriptLanguagesSelect;
 
@@ -18,6 +22,7 @@ var nodesTable;
 
 var videoID;
 
+var videoViewSetUp = false;
 var videoPlayer;
 var videoReady = false;
 var videoTime;
@@ -33,9 +38,9 @@ var recordTimeStartInSeconds = 0;
 
 document.addEventListener("DOMContentLoaded", function(){
 
-	loadButton = document.getElementById("loadButton");
-	saveButton = document.getElementById("saveButton");
-	saveButton.disabled = true;
+	fileInput = document.getElementById("fileInput");
+
+	fileReader.addEventListener("load", FileReader_OnLoad);
 
 	addNodeButton = document.getElementById("addNodeButton");
 	addNodeButton.disabled = true;
@@ -85,6 +90,32 @@ function DebugLogAdd(text)
 	document.getElementById("debug").innerHTML += "<i>" + text + "</i>";
 }
 
+function FileReader_OnLoad(event)
+{
+	xmlSourceTextArea = document.getElementById("xmlSourceTextArea");
+	xmlSourceTextArea.value = fileReader.result;
+
+	LoadXMLSource();
+
+	if(!videoViewSetUp)
+		SetupVideoView();
+	else
+		ResetVideoView();
+
+	DebugLog("Loaded: " + fileInputFile.name);
+}
+
+function FileInput_OnChanged(event)
+{
+	var file = fileInput.files[0];
+
+	fileInputFile = file;
+
+	fileInputFileSet = true;
+
+	Load();
+}
+
 function FormatTimeToString(timeInSeconds)
 {
 	var minutes = Math.floor((timeInSeconds / 60));
@@ -99,10 +130,12 @@ function FormatTimeToString(timeInSeconds)
 
 function Load()
 {
-	LoadXMLSource();
-	SetupVideoView();
+	LoadFile();
+}
 
-	DebugLog("Loaded.");
+function LoadFile()
+{
+	fileReader.readAsText(fileInputFile);
 }
 
 function LoadTranscriptNodes()
@@ -192,9 +225,6 @@ function LoadXMLSource()
 
 	LoadTranscriptNodes();
 
-	loadButton.disabled = true;
-	// saveButton.disabled = false;
-
 	xmlSourceTextArea.disabled = true;
 
 	addNodeButton.disabled = false;
@@ -231,7 +261,7 @@ function OnKeyPress(event)
 
 	// Equals / plus
 	if(char == 61)
-		TranscriptAddNode();
+		TranscriptAddNode("0:00", "...");
 
 	// Backslash
 	if(char == 92)
@@ -240,16 +270,7 @@ function OnKeyPress(event)
 
 function onYouTubeIframeAPIReady() 
 {
-	videoPlayer = new YT.Player('videoView', {
-		height: '390',
-		width: '640',
-		videoId: videoID,
-		playerVars: { 'rel': 0, 'fs': 0 },
-		events: {
-		'onReady': OnPlayerReady,
-		'onStateChange': OnPlayerStateChange
-		}
-	});
+	SetupVideoPlayer();
 }
 
 function OnPlayerReady(event) 
@@ -300,28 +321,29 @@ function PlayPauseVideo()
 	}
 }
 
+function ResetVideoView()
+{
+	var videoViewContainer = document.getElementById("videoViewContainer");
+	videoViewContainer.innerHTML = "<div id='videoView'>Player</div>";
+
+	SetupVideoPlayer();
+}
+
 function SaveXMLSource()
 {
-	for (i = 0; i < transcriptTimes.length; i++) 
+	for (i = 0; i < transcriptNodes.length; i++) 
 	{
 		var time = transcriptTimes[i];
 		var text = transcriptText[i];
 
-		if(i < transcriptNodes.length)
-		{
-			var timeElement = transcriptNodes[i].firstChild;
-			var textElement = timeElement.nextSibling;
+		var timeElement = transcriptNodes[i].firstChild;
+		var textElement = timeElement.nextSibling;
 
-			while(textElement.nodeName != transcriptLanguageSelected)
-				textElement = textElement.nextSibling;
+		while(textElement.nodeName != transcriptLanguageSelected)
+			textElement = textElement.nextSibling;
 
-			timeElement.childNodes[0].nodeValue = transcriptTimes[i];
-			textElement.childNodes[0].nodeValue = transcriptText[i];
-		}
-		else
-		{
-			AddNodeToTranscript();
-		}
+		timeElement.childNodes[0].nodeValue = transcriptTimes[i];
+		textElement.childNodes[0].nodeValue = transcriptText[i];
 	}
 
 	xmlSource = new XMLSerializer().serializeToString(xmlDoc);
@@ -341,6 +363,22 @@ function SetupVideoView()
 	tag.src = "https://www.youtube.com/iframe_api";
 	var firstScriptTag = document.getElementsByTagName('script')[0];
 	firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+	videoViewSetUp = true;
+}
+
+function SetupVideoPlayer()
+{
+	videoPlayer = new YT.Player('videoView', {
+		height: '390',
+		width: '640',
+		videoId: videoID,
+		playerVars: { 'rel': 0, 'fs': 0 },
+		events: {
+		'onReady': OnPlayerReady,
+		'onStateChange': OnPlayerStateChange
+		}
+	});
 }
 
 function StartStopRecord()
@@ -374,10 +412,7 @@ function StartStopRecord()
 		}
 
 		if(!timeExists)
-		{
-			transcriptTimes.push(formattedTime);
-			transcriptText.push("(Record)");
-		}
+			TranscriptAddNode(formattedTime, "(Record)");
 
 		videoPlayer.pauseVideo();
 
@@ -389,12 +424,23 @@ function StartStopRecord()
 	}
 }
 
-function TranscriptAddNode()
+function TranscriptAddNode(time, text)
 {
+	if(time == '>')
+	{
+		var lastTimeInSeconds = ParseFormattedTimeStringToSeconds(transcriptTimes[
+			transcriptTimes.length - 1]);
+
+		time = FormatTimeToString(lastTimeInSeconds + 1);
+	}
+
+	transcriptTimes.push(time);
+	transcriptText.push(text);
+
 	var newNode = xmlDoc.createElement("node");
 
 	var newNodeTime = xmlDoc.createElement("time");
-	var newNodeTimeValue = xmlDoc.createTextNode("0:00");
+	var newNodeTimeValue = xmlDoc.createTextNode(time);
 
 	newNodeTime.appendChild(newNodeTimeValue);
 
@@ -403,7 +449,7 @@ function TranscriptAddNode()
 	for (j = 0; j < transcriptLanguages.length; j++)
 	{ 
 		var newNodeText = xmlDoc.createElement(transcriptLanguages[j]);
-		var newNodeTextValue = xmlDoc.createTextNode("...");
+		var newNodeTextValue = xmlDoc.createTextNode(text);
 
 		newNodeText.appendChild(newNodeTextValue);
 
@@ -502,7 +548,7 @@ function TranscriptSplitNode(atIndex)
 			transcriptText[i] = transcriptTextNew[i];
 		}
 
-		TranscriptAddNode();
+		TranscriptAddNode("0:00", "...");
 	}
 }
 

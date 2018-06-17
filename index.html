@@ -18,21 +18,20 @@
 
 			<tr>
 				</td>
-					<button type="button" id="loadButton" onclick="Load()">Load</button>
-					<button type="button" id="saveButton" onclick="SaveXMLSource()">Save</button>
+					<input id="fileInput" name="myFile" type="file" onchange="FileInput_OnChanged()">
 				</td>
 			</tr>
 
 			<tr>
 				<td>
-					<textarea id="xmlSourceTextArea" rows="35" cols="50">(Lesson XML)</textarea>
+					<textarea id="xmlSourceTextArea" rows="35" cols="45" disabled="true">(Lesson XML)</textarea>
 				</td>
 
 				<td>
 					<table>
 						<tr>
 							<td>
-								<button type="button" id="addNodeButton" onclick="TranscriptAddNode()">Add Node (+)</button>
+								<button type="button" id="addNodeButton" onclick="TranscriptAddNode('>','...')">Add Node (+)</button>
 								<button type="button" id="recordButton" class="record" onclick="StartStopRecord()">Start Record (\)</button>
 							</td>
 
@@ -55,7 +54,11 @@
 				<td>
 					<table>
 						<tr>
-							<td><div id="videoView">Player</div></td>
+							<td>
+								<div id="videoViewContainer">
+									<div id="videoView">Player</div>
+								</div>
+							</td>
 						</tr>
 						<tr>
 							<td id="currentTranscriptText"> </td>
