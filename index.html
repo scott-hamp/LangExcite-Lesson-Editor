@@ -1,0 +1,81 @@
+<html>
+    <head>
+
+        <title>Lesson Editor</title>
+
+        <link rel="stylesheet" type="text/css" href="css/main.css" />
+
+    </head>
+
+    <body>
+
+		<h2>Lesson Editor</h2>
+
+		<table>
+
+			<tr>
+				</td>
+					<button type="button" id="loadButton" onclick="Load()">Load</button>
+					<button type="button" id="saveButton" onclick="SaveXMLSource()">Save</button>
+				</td>
+			</tr>
+
+			<tr>
+				<td>
+					<textarea id="xmlSourceTextArea" rows="35" cols="50">(Lesson XML)</textarea>
+				</td>
+
+				<td>
+					<table>
+						<tr>
+							<td>
+								<button type="button" id="addNodeButton" onclick="TranscriptAddNode()">Add Node (+)</button>
+								<button type="button" id="recordButton" class="record" onclick="StartStopRecord()">Start Record (\)</button>
+							</td>
+
+							<td>
+								Language: <select id="transcriptLanguagesSelect" onchange="ChangeTranscriptLanguage()"></select>
+							</td>
+						</tr>
+						<tr>
+							<td colspan="2">
+								<div id="nodesTableArea">
+									<table id="nodesTable">
+										<thead><tr><th>Actions</th><th>Time</th><th>Text</th></tr></thead>
+									</table>
+								</div>
+							</td>
+						</tr>
+					</table>
+				</td>
+
+				<td>
+					<table>
+						<tr>
+							<td><div id="videoView">Player</div></td>
+						</tr>
+						<tr>
+							<td id="currentTranscriptText"> </td>
+						</tr>
+						<tr>
+							<td><div id="videoTime">...</div></td>
+						</tr>
+						<tr>
+							<td><button type="button" id="videoPlayPauseButton" onclick="PlayPauseVideo()">Play</button></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+
+			<tr>
+				<td>
+					<div id="debug"> </div>
+				</td>
+			</tr>
+
+		</table>
+
+		<script src="js/main.js"></script>
+
+    </body>
+</html> 
