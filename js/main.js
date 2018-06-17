@@ -48,9 +48,12 @@ document.addEventListener("DOMContentLoaded", function(){
 
 	nodesTable.innerHTML += "<tbody>";
 
-	nodesTable.innerHTML += "<tr><td><button class='nodeTableAction' disabled='true'>Seek</button>" 
-		+ "<button class='nodeTableAction' disabled='true'>Remove</button></td><td>" 
-		+ "<input class='time' value='0:00'></input></td><td>" 
+	nodesTable.innerHTML += "<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
+			+ "disabled='true'>Seek</button>" 
+		+ "<button class='nodeTableAction' disabled='true'>Remove</button><div>" 
+		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
+			+ "</button></div></td>"
+		+ "<td><input class='time' value='0:00'></input></td><td>" 
 		+ "<textarea rows='3' cols='50'></textarea></td></tr>";
 
 	nodesTable.innerHTML += "</tbody>";
@@ -133,9 +136,13 @@ function LoadTranscriptNodes()
 			disabled = "";
 
 		nodesTable.innerHTML += 
-			"<tr><td><button class='nodeTableAction' onclick='SeekInVideo(" + ParseFormattedTimeStringToSeconds(
-			transcriptTimes[i]) + ")'>Seek</button>" 
-			+ "<button class='nodeTableAction' onclick='RemoveNode(" + i + ")' " + disabled + ">Remove</button></td>" 
+			"<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
+				+ "onclick='SeekInVideo(" + 
+				ParseFormattedTimeStringToSeconds(transcriptTimes[i]) + ")'>Seek</button>" 
+			+ "<button class='nodeTableAction' onclick='TranscriptRemoveNode(" + i + ")' " 
+				+ disabled + ">Remove</button></div>" 
+			+ "<div class='buttonGroup'><button class='nodeTableAction' " 
+				+ "onclick='TranscriptSplitNode(" + i + ")'>Split</button></td><div>" 
 			+ "<td><input id='nodesTableCell_" + 0 + "_" + i + "' class='time' value='" + transcriptTimes[i] + 
 				"' onchange='NodesTable_OnChanged(" + 0 + "," + i + ")'></input>" 
 			+ "</td><td><textarea id='nodesTableCell_" + 1 + "_" + i + "' rows='3' cols='50'" 
@@ -207,7 +214,10 @@ function NodesTable_OnChanged(col, row)
 	}
 	else
 	{
-		transcriptText[row] = cell.value;
+		if(cell.value.trim().length > 0)
+			transcriptText[row] = cell.value;
+		else
+			cell.value = transcriptText[row];
 	}
 
 	SaveXMLSource();
@@ -290,44 +300,6 @@ function PlayPauseVideo()
 	}
 }
 
-function RemoveNode(atIndex)
-{
-	if(atIndex >= 0 && atIndex < transcriptNodes.length && transcriptNodes.length > 1)
-	{
-		var transcriptTimesNew = new Array(transcriptNodes.length - 1);
-		var transcriptTextNew = new Array(transcriptNodes.length - 1);
-
-		for(i = 0; i < transcriptNodes.length - 1; i++)
-		{
-			if(i < atIndex)
-			{
-				transcriptTimesNew[i] = transcriptTimes[i];
-				transcriptTextNew[i] = transcriptText[i];
-			}
-			else
-			{
-				transcriptTimesNew[i] = transcriptTimes[i + 1];
-				transcriptTextNew[i] = transcriptText[i + 1];
-			}
-		}
-
-		transcriptTimes = new Array(transcriptTimesNew.length);
-		transcriptText = new Array(transcriptTextNew.length);
-
-		for(i = 0; i < transcriptTimesNew.length; i++)
-		{
-			transcriptTimes[i] = transcriptTimesNew[i];
-			transcriptText[i] = transcriptTextNew[i];
-		}
-
-		transcriptNodesRoot.removeChild(transcriptNodes[transcriptNodes.length - 1]);
-		transcriptNodes = xmlDoc.getElementsByTagName("node");
-
-		SaveXMLSource();
-		LoadXMLSource();
-	}
-}
-
 function SaveXMLSource()
 {
 	for (i = 0; i < transcriptTimes.length; i++) 
@@ -348,26 +320,7 @@ function SaveXMLSource()
 		}
 		else
 		{
-			var newNode = xmlDoc.createElement("node");
-
-			var newNodeTime = xmlDoc.createElement("time");
-			var newNodeTimeValue = xmlDoc.createTextNode(time);
-
-			newNodeTime.appendChild(newNodeTimeValue);
-
-			newNode.appendChild(newNodeTime);
-
-			for (j = 0; j < transcriptLanguages.length; j++)
-			{ 
-				var newNodeText = xmlDoc.createElement(transcriptLanguages[j]);
-				var newNodeTextValue = xmlDoc.createTextNode(text);
-
-				newNodeText.appendChild(newNodeTextValue);
-
-				newNode.appendChild(newNodeText);
-			}
-
-			transcriptNodesRoot.appendChild(newNode);
+			AddNodeToTranscript();
 		}
 	}
 
@@ -438,11 +391,119 @@ function StartStopRecord()
 
 function TranscriptAddNode()
 {
-	transcriptTimes.push("0:00");
-	transcriptText.push("...");
+	var newNode = xmlDoc.createElement("node");
+
+	var newNodeTime = xmlDoc.createElement("time");
+	var newNodeTimeValue = xmlDoc.createTextNode("0:00");
+
+	newNodeTime.appendChild(newNodeTimeValue);
+
+	newNode.appendChild(newNodeTime);
+
+	for (j = 0; j < transcriptLanguages.length; j++)
+	{ 
+		var newNodeText = xmlDoc.createElement(transcriptLanguages[j]);
+		var newNodeTextValue = xmlDoc.createTextNode("...");
+
+		newNodeText.appendChild(newNodeTextValue);
+
+		newNode.appendChild(newNodeText);
+	}
+
+	transcriptNodesRoot.appendChild(newNode);
+
+	transcriptNodes = xmlDoc.getElementsByTagName("node");
 
 	SaveXMLSource();
 	LoadXMLSource();
+}
+
+function TranscriptRemoveNode(atIndex)
+{
+	if(atIndex >= 0 && atIndex < transcriptNodes.length && transcriptNodes.length > 1)
+	{
+		var transcriptTimesNew = new Array(transcriptNodes.length - 1);
+		var transcriptTextNew = new Array(transcriptNodes.length - 1);
+
+		for(i = 0; i < transcriptNodes.length - 1; i++)
+		{
+			if(i < atIndex)
+			{
+				transcriptTimesNew[i] = transcriptTimes[i];
+				transcriptTextNew[i] = transcriptText[i];
+			}
+			else
+			{
+				transcriptTimesNew[i] = transcriptTimes[i + 1];
+				transcriptTextNew[i] = transcriptText[i + 1];
+			}
+		}
+
+		transcriptTimes = new Array(transcriptTimesNew.length);
+		transcriptText = new Array(transcriptTextNew.length);
+
+		for(i = 0; i < transcriptTimesNew.length; i++)
+		{
+			transcriptTimes[i] = transcriptTimesNew[i];
+			transcriptText[i] = transcriptTextNew[i];
+		}
+
+		transcriptNodesRoot.removeChild(transcriptNodes[transcriptNodes.length - 1]);
+		transcriptNodes = xmlDoc.getElementsByTagName("node");
+
+		SaveXMLSource();
+		LoadXMLSource();
+	}
+}
+
+function TranscriptSplitNode(atIndex)
+{
+	if(atIndex >= 0 && atIndex < transcriptNodes.length)
+	{
+		var transcriptTimesNew = new Array(transcriptNodes.length + 1);
+		var transcriptTextNew = new Array(transcriptNodes.length + 1);
+
+		for(i = transcriptNodes.length; i >= 0; i--)
+		{
+			if(i > atIndex)
+			{
+				transcriptTimesNew[i] = transcriptTimes[i - 1];
+				transcriptTextNew[i] = transcriptText[i - 1];
+
+				if(i == atIndex + 1)
+				{
+					var seconds = ParseFormattedTimeStringToSeconds(transcriptTimesNew[i]);
+					transcriptTimesNew[i] = FormatTimeToString(seconds + 1);
+
+					var breakLengthFirst = Math.round(transcriptTextNew[i].length / 2);
+					var breakLengthSecond = transcriptTextNew[i].length - breakLengthFirst;
+
+					var partFirst = transcriptTextNew[i].substring(0, breakLengthFirst);
+					var partSecond = transcriptTextNew[i].substring(breakLengthFirst, 
+						breakLengthFirst + breakLengthSecond);
+
+					transcriptText[i - 1] = partFirst + "... ";
+					transcriptTextNew[i] = "... " + partSecond;
+				}
+			}
+			else
+			{
+				transcriptTimesNew[i] = transcriptTimes[i];
+				transcriptTextNew[i] = transcriptText[i];
+			}
+		}
+
+		transcriptTimes = new Array(transcriptTimesNew.length);
+		transcriptText = new Array(transcriptTextNew.length);
+
+		for(i = 0; i < transcriptTimesNew.length; i++)
+		{
+			transcriptTimes[i] = transcriptTimesNew[i];
+			transcriptText[i] = transcriptTextNew[i];
+		}
+
+		TranscriptAddNode();
+	}
 }
 
 function UpdateVideoTime()
