@@ -257,7 +257,7 @@ function NodesTable_OnChanged(col, row)
 function OnKeyPress(event) 
 {
 	var char = event.which || event.keyCode;
-	DebugLog("Unicode CHARACTER code: " + char);
+	// DebugLog("Unicode CHARACTER code: " + char);
 
 	// Equals / plus
 	if(char == 61)
