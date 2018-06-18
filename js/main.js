@@ -440,6 +440,11 @@ function New()
 	addNodeButton.disabled = false;
 	startEndSectionButton.disabled = false;
 
+	fileInput.value = '';
+	fileInput.type = '';
+	fileInput.type = 'file';
+	fileInputFileName = "";
+
 	DebugLog("New lesson created.");
 }
 
@@ -496,12 +501,22 @@ function OnPlayerStateChange(event)
 {
 	if (event.data == YT.PlayerState.PLAYING)
 	{
+		videoPlayPauseButton.disabled = false;
 		videoPlayPauseButton.innerHTML = "Pause";
+	}
+
+	if (event.data == YT.PlayerState.BUFFERING)
+	{
+		videoPlayPauseButton.disabled = true;
 	}
 
 	if (event.data == YT.PlayerState.PAUSED)
 	{
+		videoPlayPauseButton.disabled = false;
 		videoPlayPauseButton.innerHTML = "Play";
+
+		if(sectionStarted)
+			StartEndSection();
 	}
 }
 
@@ -591,6 +606,8 @@ function Save()
     element.click();
 
     document.body.removeChild(element);
+
+	DebugLog("Saved: " + fileInputFileName + ".");
 }
 
 function SaveXMLSource()
@@ -712,6 +729,9 @@ function StartEndSection()
 
 		startEndSectionButton.innerHTML = "End Section (\\)";
 		videoPlayPauseButton.disabled = true;
+
+		DebugLog("Section started at: " + FormatTimeToString(sectionTimeStartInSeconds) 
+			+ ".");
 	}
 	else
 	{
@@ -739,6 +759,9 @@ function StartEndSection()
 
 		SaveXMLSource();
 		LoadXMLSource();
+
+		DebugLog("Section ended at " + FormatTimeToString(videoPlayer.getCurrentTime()) 
+			+ ".");
 	}
 }
 
