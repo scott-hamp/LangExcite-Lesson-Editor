@@ -11,7 +11,7 @@ var lessonTitleInput, lessonVideoTitleInput, lessonVideoURLInput;
 var changeVideoIDButton;
 var videoLanguageCheckboxes, transcriptLanguageCheckboxes;
 
-var addNodeButton, recordButton;
+var addNodeButton, startEndSectionButton;
 
 var transcriptLanguagesSelect;
 
@@ -39,8 +39,8 @@ var videoPlayPauseButton;
 
 var currentTranscriptText;
 
-var recordStarted = false;
-var recordTimeStartInSeconds = 0;
+var sectionStarted = false;
+var sectionTimeStartInSeconds = 0;
 
 
 document.addEventListener("DOMContentLoaded", SetupPage, false);
@@ -162,7 +162,8 @@ function FileReader_OnLoad(event)
 		ResetVideoView();
 
 	saveButton.disabled = false;
-	changeVideoIDButton.disabled = false;
+	addNodeButton.disabled = false;
+	startEndSectionButton.disabled = false;
 
 	DebugLog("Loaded: " + fileInputFile.name);
 }
@@ -208,12 +209,7 @@ function LessonDetail_OnChanged(elementName)
 
 function LessonVideoURLInput_OnChanged(event)
 {
-	var isValidYouTubeVideoURL = StringIsValidYouTubeVideoURL(lessonVideoURLInput.value);
-
-	if(isValidYouTubeVideoURL)
-		changeVideoIDButton.disabled = false;
-	else
-		changeVideoIDButton.disabled = true;
+	UpdateLessonVideoURLInput();
 }
 
 function Load()
@@ -364,18 +360,30 @@ function LoadTranscriptNodes()
 		transcriptTimes[i] = time;
 		transcriptText[i] = text;
 
-		var disabled = "disabled = 'true'";
+		var removeDisabled = "disabled = 'true'";
 		if(transcriptNodes.length > 1)
-			disabled = "";
+			removeDisabled = "";
+
+		var shiftUpDisabled = "disabled = 'true'";
+		if(i > 0)
+			shiftUpDisabled = "";
+
+		var shiftDownDisabled = "disabled = 'true'";
+		if(i < transcriptNodes.length - 1)
+			shiftDownDisabled = "";
 
 		nodesTable.innerHTML += 
 			"<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
 				+ "onclick='SeekInVideo(" + 
 				ParseFormattedTimeStringToSeconds(transcriptTimes[i]) + ")'>Seek</button>" 
 			+ "<button class='nodeTableAction' onclick='TranscriptRemoveNode(" + i + ")' " 
-				+ disabled + ">Remove</button></div>" 
+				+ removeDisabled + ">Remove</button></div>" 
 			+ "<div class='buttonGroup'><button class='nodeTableAction' " 
-				+ "onclick='TranscriptSplitNode(" + i + ")'>Split</button></td><div>" 
+				+ "onclick='TranscriptSplitNode(" + i + ")'>Split</button>" 
+			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", -1)'" 
+				+ shiftUpDisabled + ">🡹</button>"
+			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", 1)'" 
+				+ shiftDownDisabled + ">🡻</button></div></td>"
 			+ "<td><input id='nodesTableCell_" + 0 + "_" + i + "' class='time' value='" + transcriptTimes[i] + 
 				"' onchange='NodesTable_OnChanged(" + 0 + "," + i + ")'></input>" 
 			+ "</td><td><textarea id='nodesTableCell_" + 1 + "_" + i + "' rows='3' cols='50'" 
@@ -407,8 +415,7 @@ function LoadXMLSource()
 
 	LoadTranscriptNodes();
 
-	addNodeButton.disabled = false;
-	recordButton.disabled = false;
+	UpdateLessonVideoURLInput();
 }
 
 function New()
@@ -430,7 +437,8 @@ function New()
 		ResetVideoView();
 
 	saveButton.disabled = false;
-	changeVideoIDButton.disabled = false;
+	addNodeButton.disabled = false;
+	startEndSectionButton.disabled = false;
 
 	DebugLog("New lesson created.");
 }
@@ -469,7 +477,7 @@ function OnKeyPress(event)
 
 	// Backslash
 	if(char == 92)
-		StartStopRecord();
+		StartEndSection();
 }
 
 function onYouTubeIframeAPIReady() 
@@ -512,6 +520,16 @@ function ParseFormattedTimeStringToSeconds(formattedTimeString)
 	}
 
 	return -1;
+}
+
+function ParseYouTubeVideoURLForVideoID(value)
+{
+	if(!StringIsValidYouTubeVideoURL(value))
+		return "";
+
+	value = value.replace("https://www.youtube.com/watch?v=", "");
+
+	return value;
 }
 
 function PlayPauseVideo()
@@ -603,8 +621,8 @@ function SetupPage()
 
 	addNodeButton = document.getElementById("addNodeButton");
 	addNodeButton.disabled = true;
-	recordButton = document.getElementById("recordButton");
-	recordButton.disabled = true;
+	startEndSectionButton = document.getElementById("startEndSectionButton");
+	startEndSectionButton.disabled = true;
 
 	transcriptLanguagesSelect = document.getElementById("transcriptLanguagesSelect");
 
@@ -616,7 +634,9 @@ function SetupPage()
 			+ "disabled='true'>Seek</button>" 
 		+ "<button class='nodeTableAction' disabled='true'>Remove</button><div>" 
 		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
-			+ "</button></div></td>"
+			+ "</button>" 
+		+ "<button class='nodeTableActionHalf' disabled='true'>🡹</button>"
+		+ "<button class='nodeTableActionHalf' disabled='true'>🡻</button></div></td>"
 		+ "<td><input class='time' value='0:00'></input></td><td>" 
 		+ "<textarea rows='3' cols='50'></textarea></td></tr>";
 
@@ -653,25 +673,25 @@ function SetupVideoPlayer()
 	});
 }
 
-function StartStopRecord()
+function StartEndSection()
 {
-	if(!recordStarted)
+	if(!sectionStarted)
 	{
-		recordStarted = true;
+		sectionStarted = true;
 		videoHasBeenPlayed = true;
 
-		recordTimeStartInSeconds = videoPlayer.getCurrentTime();
+		sectionTimeStartInSeconds = videoPlayer.getCurrentTime();
 
 		videoPlayer.playVideo();
 
-		recordButton.innerHTML = "Stop Record (\\)";
+		startEndSectionButton.innerHTML = "End Section (\\)";
 		videoPlayPauseButton.disabled = true;
 	}
 	else
 	{
-		recordStarted = false;
+		sectionStarted = false;
 
-		var formattedTime = FormatTimeToString(recordTimeStartInSeconds);
+		var formattedTime = FormatTimeToString(sectionTimeStartInSeconds);
 		var timeExists = false;
 
 		for(i = 0; i < transcriptTimes.length; i++)
@@ -684,11 +704,11 @@ function StartStopRecord()
 		}
 
 		if(!timeExists)
-			TranscriptAddNode(formattedTime, "(Record)");
+			TranscriptAddNode(formattedTime, "...");
 
 		videoPlayer.pauseVideo();
 
-		recordButton.innerHTML = "Start Record (\\)";
+		startEndSectionButton.innerHTML = "Start Section (\\)";
 		videoPlayPauseButton.disabled = false;
 
 		SaveXMLSource();
@@ -788,54 +808,93 @@ function TranscriptRemoveNode(atIndex)
 	}
 }
 
+function TranscriptShiftNode(atIndex, direction)
+{
+	if(direction != -1 && direction != 1) return;
+
+	if(atIndex + direction < 0 || atIndex + direction >= transcriptNodes.length)
+		return;
+
+	var transcriptNodeFirst = transcriptNodes[atIndex];
+	var transcriptNodeSecond = transcriptNodes[atIndex + direction];
+
+	if(direction == 1)
+	{
+		transcriptNodeSecond.parentNode.insertBefore(transcriptNodeSecond, 
+			transcriptNodeFirst);
+	}
+	else
+	{
+		transcriptNodeFirst.parentNode.insertBefore(transcriptNodeFirst, 
+			transcriptNodeSecond);
+	}
+
+	xmlSource = new XMLSerializer().serializeToString(xmlDoc);
+	xmlSourceTextArea.value = xmlSource;
+
+	LoadXMLSource();
+}
+
 function TranscriptSplitNode(atIndex)
 {
-	if(atIndex >= 0 && atIndex < transcriptNodes.length)
+	if(atIndex < 0 || atIndex >= transcriptNodes.length)
+		return;
+
+	var transcriptTimesNew = new Array(transcriptNodes.length + 1);
+	var transcriptTextNew = new Array(transcriptNodes.length + 1);
+
+	for(i = transcriptNodes.length; i >= 0; i--)
 	{
-		var transcriptTimesNew = new Array(transcriptNodes.length + 1);
-		var transcriptTextNew = new Array(transcriptNodes.length + 1);
-
-		for(i = transcriptNodes.length; i >= 0; i--)
+		if(i > atIndex)
 		{
-			if(i > atIndex)
+			transcriptTimesNew[i] = transcriptTimes[i - 1];
+			transcriptTextNew[i] = transcriptText[i - 1];
+
+			if(i == atIndex + 1)
 			{
-				transcriptTimesNew[i] = transcriptTimes[i - 1];
-				transcriptTextNew[i] = transcriptText[i - 1];
+				var seconds = ParseFormattedTimeStringToSeconds(transcriptTimesNew[i]);
+				transcriptTimesNew[i] = FormatTimeToString(seconds + 1);
 
-				if(i == atIndex + 1)
-				{
-					var seconds = ParseFormattedTimeStringToSeconds(transcriptTimesNew[i]);
-					transcriptTimesNew[i] = FormatTimeToString(seconds + 1);
+				var breakLengthFirst = Math.round(transcriptTextNew[i].length / 2);
+				var breakLengthSecond = transcriptTextNew[i].length - breakLengthFirst;
 
-					var breakLengthFirst = Math.round(transcriptTextNew[i].length / 2);
-					var breakLengthSecond = transcriptTextNew[i].length - breakLengthFirst;
+				var partFirst = transcriptTextNew[i].substring(0, breakLengthFirst);
+				var partSecond = transcriptTextNew[i].substring(breakLengthFirst, 
+					breakLengthFirst + breakLengthSecond);
 
-					var partFirst = transcriptTextNew[i].substring(0, breakLengthFirst);
-					var partSecond = transcriptTextNew[i].substring(breakLengthFirst, 
-						breakLengthFirst + breakLengthSecond);
-
-					transcriptText[i - 1] = partFirst + "... ";
-					transcriptTextNew[i] = "... " + partSecond;
-				}
-			}
-			else
-			{
-				transcriptTimesNew[i] = transcriptTimes[i];
-				transcriptTextNew[i] = transcriptText[i];
+				transcriptText[i - 1] = partFirst + "... ";
+				transcriptTextNew[i] = "... " + partSecond;
 			}
 		}
-
-		transcriptTimes = new Array(transcriptTimesNew.length);
-		transcriptText = new Array(transcriptTextNew.length);
-
-		for(i = 0; i < transcriptTimesNew.length; i++)
+		else
 		{
-			transcriptTimes[i] = transcriptTimesNew[i];
-			transcriptText[i] = transcriptTextNew[i];
+			transcriptTimesNew[i] = transcriptTimes[i];
+			transcriptTextNew[i] = transcriptText[i];
 		}
-
-		TranscriptAddNode("0:00", "...");
 	}
+
+	transcriptTimes = new Array(transcriptTimesNew.length);
+	transcriptText = new Array(transcriptTextNew.length);
+
+	for(i = 0; i < transcriptTimesNew.length; i++)
+	{
+		transcriptTimes[i] = transcriptTimesNew[i];
+		transcriptText[i] = transcriptTextNew[i];
+	}
+
+	TranscriptAddNode("0:00", "...");
+}
+
+function UpdateLessonVideoURLInput()
+{
+	var newVideoID = ParseYouTubeVideoURLForVideoID(lessonVideoURLInput.value);
+
+	var disabled = false;
+
+	if(newVideoID == "" || videoID == newVideoID)
+		disabled = true;
+
+	changeVideoIDButton.disabled = disabled;
 }
 
 function UpdateVideoTime()

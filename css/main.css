@@ -1,5 +1,6 @@
 body {
 	background-color: linen;
+	font-family: 'Open Sans', sans-serif;
 }
 
 h2 {
@@ -19,13 +20,6 @@ button {
 	cursor: pointer;
 }
 
-button.record {
-	border-radius: 6px;
-	color: white;
-	background-color: #cc1439;
-	border-color: #ad0f2f;
-}
-
 button.nodeTableAction {
 	border-radius: 0px;
 	padding: 4px 6px;
@@ -38,6 +32,7 @@ button.disabled {
 
 .buttonGroup button {
 	width: 70px;
+	height: 35px;
     float: left;
 	display: table;
 }
@@ -46,6 +41,12 @@ button.disabled {
     content: "";
     clear: both;
     display: table;
+}
+
+button.nodeTableActionHalf {
+	width: 35px;
+	border-radius: 0px;
+	padding: 4px 6px;
 }
 
 input, textarea {
@@ -85,7 +86,6 @@ span.lessonDetailsHalf{
 	padding: 5px;
 	border: 2px solid #ddd;
 	font-size: 16px;
-	font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
 }
 
 #nodesTableArea{
@@ -95,7 +95,6 @@ span.lessonDetailsHalf{
 }
 
 #nodesTable {
-	font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
 	border-collapse: collapse;
 	width: 100%;
 }
@@ -136,5 +135,6 @@ span.lessonDetailsHalf{
 	text-align: center;
 	vertical-align: middle;
 	font-size: 24px;
+	font-family: 'Merriweather', serif;
 	overflow-x: auto;
 }
