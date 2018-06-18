@@ -10,10 +10,9 @@ h2 {
 h4 {
 	color: #06266F;
 	margin-left: 10px;
-} 
+}
 
 button {
-	border-radius: 8px;
 	padding: 8px 12px;
 	text-align: center;
 	font-size: 14px;
@@ -21,6 +20,7 @@ button {
 }
 
 button.record {
+	border-radius: 6px;
 	color: white;
 	background-color: #cc1439;
 	border-color: #ad0f2f;
@@ -55,6 +55,37 @@ input, textarea {
 input.time {
 	width: 60px;
 	text-align: center;
+}
+
+input.title {
+	width: 300px;
+	text-align: left;
+}
+
+input.url {
+	width: 380px;
+	text-align: left;
+	text-style: italic;
+}
+
+span.lessonDetails{
+	padding: 5px;
+	width: 100%;
+	display: inline-block;
+}
+
+span.lessonDetailsHalf{
+	padding: 5px;
+	width: 50%;
+}
+
+#lessonDetailsContainer {
+	height: 450px;
+	width: 400px;
+	padding: 5px;
+	border: 2px solid #ddd;
+	font-size: 16px;
+	font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
 }
 
 #nodesTableArea{

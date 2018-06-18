@@ -1,9 +1,15 @@
+﻿var xmlSource, xmlParser, xmlDoc;
 var xmlSourceTextArea;
-var xmlSource, xmlParser, xmlDoc;
 
-var fileInput, fileInputFile;
+var fileInput, fileInputFile, fileInputFileName;
 var fileInputFileSet = false;
 var fileReader = new FileReader();
+
+var saveButton;
+
+var lessonTitleInput, lessonVideoTitleInput, lessonVideoURLInput;
+var changeVideoIDButton;
+var videoLanguageCheckboxes, transcriptLanguageCheckboxes;
 
 var addNodeButton, recordButton;
 
@@ -12,11 +18,12 @@ var transcriptLanguagesSelect;
 var transcriptNodesRoot;
 var transcriptNodes;
 
-var transcriptLanguages;
+var videoLanguages, transcriptLanguages;
 var transcriptTimes;
 var transcriptText;
 
-var transcriptLanguageSelected, transcriptLanguageSelectedIndex;
+var transcriptLanguageSelected = "en-us"; 
+var transcriptLanguageSelectedIndex = 0;
 
 var nodesTable;
 
@@ -36,47 +43,99 @@ var recordStarted = false;
 var recordTimeStartInSeconds = 0;
 
 
-document.addEventListener("DOMContentLoaded", function(){
-
-	fileInput = document.getElementById("fileInput");
-
-	fileReader.addEventListener("load", FileReader_OnLoad);
-
-	addNodeButton = document.getElementById("addNodeButton");
-	addNodeButton.disabled = true;
-	recordButton = document.getElementById("recordButton");
-	recordButton.disabled = true;
-
-	transcriptLanguagesSelect = document.getElementById("transcriptLanguagesSelect");
-
-	nodesTable = document.getElementById("nodesTable");
-
-	nodesTable.innerHTML += "<tbody>";
-
-	nodesTable.innerHTML += "<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
-			+ "disabled='true'>Seek</button>" 
-		+ "<button class='nodeTableAction' disabled='true'>Remove</button><div>" 
-		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
-			+ "</button></div></td>"
-		+ "<td><input class='time' value='0:00'></input></td><td>" 
-		+ "<textarea rows='3' cols='50'></textarea></td></tr>";
-
-	nodesTable.innerHTML += "</tbody>";
-
-	videoTime = document.getElementById("videoTime");
-	videoPlayPauseButton = document.getElementById("videoPlayPauseButton");
-
-	currentTranscriptText = document.getElementById("currentTranscriptText");
-});
+document.addEventListener("DOMContentLoaded", SetupPage, false);
 
 document.addEventListener("keypress", OnKeyPress, false);
 
+
+function ChangeLessonTitle(titleIndex, value)
+{
+	if(titleIndex < 0 || titleIndex > 1) return;
+	if(value.trim().length == 0) return;
+
+	var titleNodes = xmlDoc.getElementsByTagName("title");
+
+	var titleElement = titleNodes[titleIndex].childNodes[0];
+
+	while(titleElement.nodeName != transcriptLanguageSelected)
+		titleElement = titleElement.nextSibling;
+
+	titleElement.childNodes[0].nodeValue = value;
+
+	SaveXMLSource();
+}
+
+function ChangeLessonVideoID(fromURL)
+{
+	if(!StringIsValidYouTubeVideoURL(fromURL)) return;
+
+	fromURL = fromURL.trim();
+	fromURL = fromURL.replace("https://www.youtube.com/watch?v=", "");
+
+	videoID = fromURL;
+
+	lessonVideoURLInput.value = "https://www.youtube.com/watch?v=" + videoID;
+
+	var idNode = xmlDoc.getElementsByTagName("id")[0];
+	idNode.childNodes[0].nodeValue = videoID;
+
+	SaveXMLSource();
+	ResetVideoView();
+}
+
+function ChangeLessonVideoLanguages()
+{
+	var atLeastOneCheckboxIsChecked = false;
+	for(i = 0; i < videoLanguageCheckboxes.length; i++)
+	{
+		if(!videoLanguageCheckboxes[i].checked)
+			continue;
+
+		atLeastOneCheckboxIsChecked = true;
+		break;
+	}
+
+	if(!atLeastOneCheckboxIsChecked)
+		videoLanguageCheckboxes[0].checked = true;
+
+	var checkedBoxes = new Array(0);
+
+	for(i = 0; i < videoLanguageCheckboxes.length; i++)
+	{
+		if(!videoLanguageCheckboxes[i].checked)
+			continue;
+
+		checkedBoxes.push(videoLanguageCheckboxes[i]);
+	}
+
+	var videoLanguages = new Array(checkedBoxes.length);
+
+	for(i = 0; i < videoLanguages.length; i++)
+		videoLanguages[i] = checkedBoxes[i].value;
+
+	var videoLanguagesNode = xmlDoc.getElementsByTagName("video_languages")[0];
+
+	var videoLanguagesNodeValue = "";
+
+	for(i = 0; i < videoLanguages.length; i++)
+	{
+		videoLanguagesNodeValue += videoLanguages[i];
+
+		if(i < videoLanguages.length - 1)
+			videoLanguagesNodeValue += ",";
+	}
+
+	videoLanguagesNode.childNodes[0].nodeValue = videoLanguagesNodeValue;
+
+	SaveXMLSource();
+}
 
 function ChangeTranscriptLanguage()
 {
 	transcriptLanguageSelected = transcriptLanguagesSelect.value;
 	transcriptLanguageSelectedIndex = transcriptLanguagesSelect.selectedIndex;
 
+	LoadLessonDetails();
 	LoadTranscriptNodes();
 }
 
@@ -92,8 +151,8 @@ function DebugLogAdd(text)
 
 function FileReader_OnLoad(event)
 {
-	xmlSourceTextArea = document.getElementById("xmlSourceTextArea");
-	xmlSourceTextArea.value = fileReader.result;
+	xmlSource = fileReader.result;
+	xmlSourceTextArea.value = xmlSource;
 
 	LoadXMLSource();
 
@@ -101,6 +160,9 @@ function FileReader_OnLoad(event)
 		SetupVideoView();
 	else
 		ResetVideoView();
+
+	saveButton.disabled = false;
+	changeVideoIDButton.disabled = false;
 
 	DebugLog("Loaded: " + fileInputFile.name);
 }
@@ -110,6 +172,7 @@ function FileInput_OnChanged(event)
 	var file = fileInput.files[0];
 
 	fileInputFile = file;
+	fileInputFileName = file.name;
 
 	fileInputFileSet = true;
 
@@ -128,6 +191,31 @@ function FormatTimeToString(timeInSeconds)
 	return minutes + ":" + secondsString;
 }
 
+function LessonDetail_OnChanged(elementName)
+{
+	if(elementName == "lessonTitleInput")
+		ChangeLessonTitle(0, lessonTitleInput.value);
+
+	if(elementName == "lessonVideoTitleInput")
+		ChangeLessonTitle(1, lessonVideoTitleInput.value);
+
+	if(elementName == "lessonVideoURL")
+		ChangeLessonVideoID(lessonVideoURLInput.value);
+
+	if(elementName == "videoLanguageCheckbox")
+		ChangeLessonVideoLanguages();
+}
+
+function LessonVideoURLInput_OnChanged(event)
+{
+	var isValidYouTubeVideoURL = StringIsValidYouTubeVideoURL(lessonVideoURLInput.value);
+
+	if(isValidYouTubeVideoURL)
+		changeVideoIDButton.disabled = false;
+	else
+		changeVideoIDButton.disabled = true;
+}
+
 function Load()
 {
 	LoadFile();
@@ -136,6 +224,118 @@ function Load()
 function LoadFile()
 {
 	fileReader.readAsText(fileInputFile);
+}
+
+function LoadLessonDetails()
+{
+	var videoLanguagesNode = xmlDoc.getElementsByTagName("video_languages")[0];
+
+	videoLanguages = videoLanguagesNode.childNodes[0].nodeValue.split(',');
+
+	var transcriptLanguagesNode = xmlDoc.getElementsByTagName("transcript_languages")[0];
+
+	transcriptLanguages = transcriptLanguagesNode.childNodes[0].nodeValue.split(',');
+
+	transcriptLanguagesSelect.innerHTML = "";
+
+	transcriptLanguageSelectedIndex = -1;
+
+	for (i = 0; i < transcriptLanguages.length; i++)
+	{
+		var languageName;
+
+		switch(transcriptLanguages[i])
+		{
+			case "en-us":
+				languageName = "English (US)";
+				break;
+			case "zh-tw":
+				languageName = "中文（台灣）";
+				break;
+			case "pinyin-tw":
+				languageName = "Pinyin (TW)";
+				break;
+			default:
+				languageName = "English (US)";
+		}
+
+		transcriptLanguagesSelect.innerHTML += "<option value='" + transcriptLanguages[i] + "'>" 
+			+ languageName + "</option>";
+
+		if(transcriptLanguageSelected != transcriptLanguages[i])
+			continue;
+
+		transcriptLanguageSelectedIndex = i;
+		transcriptLanguagesSelect.selectedIndex = i;
+	}
+
+	if(transcriptLanguageSelectedIndex == -1)
+	{
+		transcriptLanguageSelected = transcriptLanguages[0];
+		transcriptLanguagesSelect.selectedIndex = 0;
+	}
+
+	var videoIDNode = xmlDoc.getElementsByTagName("id")[0];
+
+	videoID = videoIDNode.childNodes[0].nodeValue;
+
+	var titleNodes = xmlDoc.getElementsByTagName("title");
+
+	var titleElement = titleNodes[0].childNodes[0];
+
+	while(titleElement.nodeName != transcriptLanguageSelected)
+		titleElement = titleElement.nextSibling;
+
+	lessonTitleInput.value = titleElement.childNodes[0].nodeValue;
+
+	titleElement = titleNodes[1].childNodes[0];
+
+	while(titleElement.nodeName != transcriptLanguageSelected)
+		titleElement = titleElement.nextSibling;
+
+	lessonVideoTitleInput.value = titleElement.childNodes[0].nodeValue;
+
+	lessonVideoURLInput.value = "https://www.youtube.com/watch?v=" + videoID;
+
+	for(i = 0; i < videoLanguageCheckboxes.length; i++)
+	{
+		videoLanguageCheckboxes[i].disabled = false;
+
+		videoLanguageCheckboxes[i].checked = false;
+
+		var languageCheck = false;
+		for(j = 0; j < videoLanguages.length; j++)
+		{
+			if(videoLanguageCheckboxes[i].value != videoLanguages[j])
+				continue;
+
+			languageCheck = true;
+			break;
+		}
+
+		if(languageCheck)
+			videoLanguageCheckboxes[i].checked = true;
+	}
+
+	for(i = 0; i < transcriptLanguageCheckboxes.length; i++)
+	{
+		// transcriptLanguageCheckboxes[i].disabled = false;
+
+		transcriptLanguageCheckboxes[i].checked = false;
+
+		var languageCheck = false;
+		for(j = 0; j < transcriptLanguages.length; j++)
+		{
+			if(transcriptLanguageCheckboxes[i].value != transcriptLanguages[j])
+				continue;
+
+			languageCheck = true;
+			break;
+		}
+
+		if(languageCheck)
+			transcriptLanguageCheckboxes[i].checked = true;
+	}
 }
 
 function LoadTranscriptNodes()
@@ -188,7 +388,6 @@ function LoadTranscriptNodes()
 
 function LoadXMLSource()
 {
-	xmlSourceTextArea = document.getElementById("xmlSourceTextArea");
 	xmlSource = xmlSourceTextArea.value;
 
 	xmlSource = xmlSource.replace(
@@ -204,31 +403,36 @@ function LoadXMLSource()
 	xmlParser = new DOMParser();
 	xmlDoc = xmlParser.parseFromString(xmlSource, "text/xml");
 
-	var transcriptLanguagesNode = xmlDoc.getElementsByTagName("transcript_languages")[0];
-
-	transcriptLanguages = transcriptLanguagesNode.childNodes[0].nodeValue.split(',');
-
-	transcriptLanguagesSelect.innerHTML = "";
-
-	for (i = 0; i < transcriptLanguages.length; i++)
-	{
-		transcriptLanguagesSelect.innerHTML += "<option value='" + transcriptLanguages[i] + "'>" 
-			+ transcriptLanguages[i] + "</option>";
-	}
-
-	transcriptLanguageSelected = transcriptLanguages[0];
-	transcriptLanguageSelectedIndex = 0;
-
-	var videoIDNode = xmlDoc.getElementsByTagName("id")[0];
-
-	videoID = videoIDNode.childNodes[0].nodeValue;
+	LoadLessonDetails();
 
 	LoadTranscriptNodes();
 
-	xmlSourceTextArea.disabled = true;
-
 	addNodeButton.disabled = false;
 	recordButton.disabled = false;
+}
+
+function New()
+{
+	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><title><en-us>(New Lesson)" 
+		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><languages><video_languages>en-us,zh-tw" 
+		+ "</video_languages><transcript_languages>en-us,zh-tw</transcript_languages>" 
+		+ "</languages><video><title><en-us>(Video Title)</en-us><zh-tw>(視頻標題)</zh-tw>" 
+		+ "</title><id>AUl771jkMqk</id></video><transcript><nodes><node><time>0:00</time>" 
+		+ "<en-us>...</en-us><zh-tw>...</zh-tw></node></nodes></transcript></lesson>";
+
+	xmlSourceTextArea.value = xmlSource;
+
+	LoadXMLSource();
+
+	if(!videoViewSetUp)
+		SetupVideoView();
+	else
+		ResetVideoView();
+
+	saveButton.disabled = false;
+	changeVideoIDButton.disabled = false;
+
+	DebugLog("New lesson created.");
 }
 
 function NodesTable_OnChanged(col, row)
@@ -329,6 +533,22 @@ function ResetVideoView()
 	SetupVideoPlayer();
 }
 
+function Save()
+{
+	xmlSource = xmlSourceTextArea.value;
+
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(xmlSource));
+    element.setAttribute('download', fileInputFileName);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+}
+
 function SaveXMLSource()
 {
 	for (i = 0; i < transcriptNodes.length; i++) 
@@ -354,6 +574,58 @@ function SeekInVideo(seconds)
 {
 	if(seconds >= 0 && seconds < videoPlayer.getDuration())
 		videoPlayer.seekTo(seconds, true);
+}
+
+function SetupPage()
+{
+	fileInput = document.getElementById("fileInput");
+
+	fileReader.addEventListener("load", FileReader_OnLoad);
+
+	lessonTitleInput = document.getElementById("lessonTitleInput"); 
+	lessonVideoTitleInput = document.getElementById("lessonVideoTitleInput"); 
+	lessonVideoURLInput = document.getElementById("lessonVideoURLInput"); 
+	changeVideoIDButton = document.getElementById("changeVideoIDButton");
+	changeVideoIDButton.disabled = true;
+
+	videoLanguageCheckboxes = document.getElementsByName("videoLanguageCheckbox");
+	for(i = 0; i < videoLanguageCheckboxes.length; i++)
+		videoLanguageCheckboxes[i].disabled = true;
+
+	transcriptLanguageCheckboxes = document.getElementsByName("transcriptLanguageCheckbox");
+	for(i = 0; i < transcriptLanguageCheckboxes.length; i++)
+		transcriptLanguageCheckboxes[i].disabled = true;
+
+	saveButton = document.getElementById("saveButton");
+	saveButton.disabled = true;
+
+	xmlSourceTextArea = document.getElementById("xmlSourceTextArea");
+
+	addNodeButton = document.getElementById("addNodeButton");
+	addNodeButton.disabled = true;
+	recordButton = document.getElementById("recordButton");
+	recordButton.disabled = true;
+
+	transcriptLanguagesSelect = document.getElementById("transcriptLanguagesSelect");
+
+	nodesTable = document.getElementById("nodesTable");
+
+	nodesTable.innerHTML += "<tbody>";
+
+	nodesTable.innerHTML += "<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
+			+ "disabled='true'>Seek</button>" 
+		+ "<button class='nodeTableAction' disabled='true'>Remove</button><div>" 
+		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
+			+ "</button></div></td>"
+		+ "<td><input class='time' value='0:00'></input></td><td>" 
+		+ "<textarea rows='3' cols='50'></textarea></td></tr>";
+
+	nodesTable.innerHTML += "</tbody>";
+
+	videoTime = document.getElementById("videoTime");
+	videoPlayPauseButton = document.getElementById("videoPlayPauseButton");
+
+	currentTranscriptText = document.getElementById("currentTranscriptText");
 }
 
 function SetupVideoView()
@@ -422,6 +694,20 @@ function StartStopRecord()
 		SaveXMLSource();
 		LoadXMLSource();
 	}
+}
+
+function StringIsValidYouTubeVideoURL(value)
+{
+	value = value.trim();
+
+	if(value.length == 0) return false;
+	if(!value.includes("https://www.youtube.com/watch?v=")) return false;
+
+	value = value.replace("https://www.youtube.com/watch?v=", "");
+
+	if(value.length != 11) return false;
+
+	return true;
 }
 
 function TranscriptAddNode(time, text)

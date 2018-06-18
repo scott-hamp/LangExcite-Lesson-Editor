@@ -1,4 +1,4 @@
-<html>
+﻿<html>
     <head>
 
         <title>Lesson Editor</title>
@@ -19,12 +19,61 @@
 			<tr>
 				</td>
 					<input id="fileInput" name="myFile" type="file" onchange="FileInput_OnChanged()">
+					<button id="saveButton" onclick="Save()">Save</button>
+					<button id="newButton" onclick="New()">New</button>
 				</td>
 			</tr>
 
 			<tr>
 				<td>
-					<textarea id="xmlSourceTextArea" rows="35" cols="45" disabled="true">(Lesson XML)</textarea>
+					<table>
+						<tr>
+							<div id="lessonDetailsContainer">
+								<span class="lessonDetails">Language: 
+									<select id="transcriptLanguagesSelect" 
+									onchange="ChangeTranscriptLanguage()"></select>
+									</span>
+								<span class="lessonDetails">Title: 
+									<input id="lessonTitleInput" class="title" 
+									onchange="LessonDetail_OnChanged('lessonTitleInput')">
+									</input></span>
+								<span class="lessonDetails">Video Title: 
+									<input id="lessonVideoTitleInput" class="title"
+									onchange="LessonDetail_OnChanged('lessonVideoTitleInput')">
+									</input></span>
+								<span class="lessonDetails">Video URL: 
+									<input id="lessonVideoURLInput" class="url" 
+									onchange="LessonVideoURLInput_OnChanged()" 
+									onkeyup="LessonVideoURLInput_OnChanged()"></input>
+									<button id="changeVideoIDButton" 
+									onclick="LessonDetail_OnChanged('lessonVideoURL')">Change
+									</button></span>
+								<span class="lessonDetails">Video Languages:<ul>
+									<li><input type="checkbox" name="videoLanguageCheckbox" 
+										value="en-us" checked 
+										onchange="LessonDetail_OnChanged('videoLanguageCheckbox')">
+										English (US)</input></li>
+									<li><input type="checkbox" name="videoLanguageCheckbox" 
+										value="zh-tw" 
+										onchange="LessonDetail_OnChanged('videoLanguageCheckbox')">
+										中文（台灣）</input></li>
+									</ul></span>
+								<span class="lessonDetails">Transcript Languages:<ul>
+									<li><input type="checkbox" name="transcriptLanguageCheckbox" 
+										value="en-us" checked>English (US)</input></li>
+									<li><input type="checkbox" name="transcriptLanguageCheckbox" 
+										value="zh-tw">中文（台灣）</input></li>
+									<li><input type="checkbox" name="transcriptLanguageCheckbox" 
+										value="pinyin-tw">Pinyin (TW)</input></li>
+									</ul></span>
+							</div>
+						</tr>
+						<tr>
+							<td>
+								<textarea id="xmlSourceTextArea" rows="10" cols="43" disabled="true">(Lesson XML)</textarea>
+							</td>
+						</tr>
+					</table>
 				</td>
 
 				<td>
@@ -33,10 +82,6 @@
 							<td>
 								<button type="button" id="addNodeButton" onclick="TranscriptAddNode('>','...')">Add Node (+)</button>
 								<button type="button" id="recordButton" class="record" onclick="StartStopRecord()">Start Record (\)</button>
-							</td>
-
-							<td>
-								Language: <select id="transcriptLanguagesSelect" onchange="ChangeTranscriptLanguage()"></select>
 							</td>
 						</tr>
 						<tr>
