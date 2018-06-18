@@ -1,7 +1,7 @@
 ﻿var xmlSource, xmlParser, xmlDoc;
 var xmlSourceTextArea;
 
-var fileInput, fileInputFile, fileInputFileName;
+var fileInput, fileInputFile, fileInputFileName = "";
 var fileInputFileSet = false;
 var fileReader = new FileReader();
 
@@ -551,8 +551,34 @@ function ResetVideoView()
 	SetupVideoPlayer();
 }
 
+function SanitizeFilename(value)
+{
+	value = value.trim();
+
+	if(value.length == 0) return value;
+
+	value = value.replace(/\s+/g, '');
+
+	var invalidCharacters = ["~", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "+", 
+		"-", "=", "{", "}", "[", "]", "|", "\\", ":", ";", "'", "<", ",", ">", ".", 
+		"*", "+", "-", "`" ];
+
+	for(i = 0; i < invalidCharacters.length; i++)
+		value = value.replace(invalidCharacters[i], "");
+
+	return value;
+}
+
 function Save()
 {
+	if(fileInputFileName == "")
+	{
+		fileInputFileName = lessonTitleInput.value.trim();
+
+		fileInputFileName = SanitizeFilename(fileInputFileName);
+		fileInputFileName += ".xml";
+	}
+
 	xmlSource = xmlSourceTextArea.value;
 
     var element = document.createElement('a');
