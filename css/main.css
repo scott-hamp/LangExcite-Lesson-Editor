@@ -71,6 +71,16 @@ input.url {
 	text-style: italic;
 }
 
+label.fileAction{
+	padding: 5px;
+	font-size: 20px;
+	cursor: pointer;
+}
+
+label.fileAction:hover{
+	text-decoration: underline;
+}
+
 span.lessonDetails{
 	padding: 5px;
 	width: 100%;
@@ -80,6 +90,15 @@ span.lessonDetails{
 span.lessonDetailsHalf{
 	padding: 5px;
 	width: 50%;
+}
+
+.inputFile {
+	width: 0.1px;
+	height: 0.1px;
+	opacity: 0;
+	overflow: hidden;
+	position: absolute;
+	z-index: -1;
 }
 
 #lessonDetailsContainer {

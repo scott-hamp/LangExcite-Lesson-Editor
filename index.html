@@ -17,9 +17,10 @@
 
 			<tr>
 				</td>
-					<input id="fileInput" name="myFile" type="file" onchange="FileInput_OnChanged()">
-					<button id="saveButton" onclick="Save()">Save</button>
-					<button id="newButton" onclick="New()">New</button>
+					<input id="fileInput" name="myFile" class="inputFile" type="file" onchange="FileInput_OnChanged()">
+					<label id="loadButton" class="fileAction" for="fileInput"><b>Load</b></label>
+					<label id="saveButton" class="fileAction" onclick="Save()"><b>Save</b></label>
+					<label id="newButton" class="fileAction" onclick="New()"><b>New</b></label>
 				</td>
 			</tr>
 

@@ -1,4 +1,6 @@
-﻿var currentVersion = "0.1.4";
+﻿var currentVersion = "0.1.5";
+
+var changesHaveBeenMadeSinceLastLoadOrSave = false;
 
 var xmlSource, xmlParser, xmlDoc;
 var xmlSourceTextArea;
@@ -50,6 +52,12 @@ var retroactiveNodeIndex = 0;
 document.addEventListener("DOMContentLoaded", SetupPage, false);
 
 document.addEventListener("keypress", OnKeyPress, false);
+
+window.onbeforeunload = function() 
+{ 
+  if (changesHaveBeenMadeSinceLastLoadOrSave)
+    return "Some changes have not been saved. Leave anyways?";
+}
 
 
 function ChangeLessonTitle(titleIndex, value)
@@ -170,6 +178,8 @@ function FileReader_OnLoad(event)
 	startEndSectionButton.disabled = false;
 	startEndSectionButton.disabled = false;
 
+	changesHaveBeenMadeSinceLastLoadOrSave = false;
+
 	DebugLog("Loaded: " + fileInputFile.name);
 }
 
@@ -227,6 +237,8 @@ function LessonDetail_OnChanged(elementName)
 
 	if(elementName == "videoLanguageCheckbox")
 		ChangeLessonVideoLanguages();
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function LessonVideoURLInput_OnChanged(event)
@@ -448,6 +460,12 @@ function LoadXMLSource()
 
 function New()
 {
+	if(changesHaveBeenMadeSinceLastLoadOrSave)
+	{
+		if (!confirm("Some changes have not been saved. Create a new lesson anyways?")) 
+			return;
+	}
+
 	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><editor_version>" + 
 		currentVersion + "</editor_version><title><en-us>(New Lesson)" 
 		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><languages><video_languages>en-us,zh-tw" 
@@ -475,6 +493,8 @@ function New()
 	fileInput.type = 'file';
 	fileInputFileName = "";
 
+	changesHaveBeenMadeSinceLastLoadOrSave = false;
+
 	DebugLog("New lesson created.");
 }
 
@@ -499,6 +519,8 @@ function NodesTable_OnChanged(col, row)
 
 	SaveXMLSource();
 	LoadXMLSource();
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function OnKeyPress(event) 
@@ -956,6 +978,8 @@ function TranscriptAddNode(time, text)
 
 	SaveXMLSource();
 	LoadXMLSource();
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function TranscriptRemoveNode(atIndex)
@@ -997,6 +1021,8 @@ function TranscriptRemoveNode(atIndex)
 
 	SaveXMLSource();
 	LoadXMLSource();
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function TranscriptShiftNode(atIndex, direction)
@@ -1024,6 +1050,8 @@ function TranscriptShiftNode(atIndex, direction)
 	xmlSourceTextArea.value = xmlSource;
 
 	LoadXMLSource();
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function TranscriptSplitNode(atIndex)
@@ -1074,6 +1102,8 @@ function TranscriptSplitNode(atIndex)
 	}
 
 	TranscriptAddNode("0:00", "...");
+
+	changesHaveBeenMadeSinceLastLoadOrSave = true;
 }
 
 function UpdateLessonVideoURLInput()
@@ -1100,4 +1130,10 @@ function UpdateVideoTime()
 	currentTranscriptText.innerHTML = transcriptText[transcriptNodeIndex];
 
 	setTimeout(UpdateVideoTime, 100);
+}
+
+function Window_BeforeUnload(event)
+{
+	if(changesHaveBeenMadeSinceLastLoadOrSave)
+		return "Some changes have not been saved. Leave anyways?";
 }
