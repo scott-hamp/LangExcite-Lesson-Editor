@@ -1,4 +1,6 @@
-﻿var xmlSource, xmlParser, xmlDoc;
+﻿var currentVersion = "0.1.4";
+
+var xmlSource, xmlParser, xmlDoc;
 var xmlSourceTextArea;
 
 var fileInput, fileInputFile, fileInputFileName = "";
@@ -11,7 +13,7 @@ var lessonTitleInput, lessonVideoTitleInput, lessonVideoURLInput;
 var changeVideoIDButton;
 var videoLanguageCheckboxes, transcriptLanguageCheckboxes;
 
-var addNodeButton, startEndSectionButton;
+var addNodeButton, startEndSectionButton, startEndRetroactiveModeButton;
 
 var transcriptLanguagesSelect;
 
@@ -41,6 +43,8 @@ var currentTranscriptText;
 
 var sectionStarted = false;
 var sectionTimeStartInSeconds = 0;
+var retroactiveModeStarted = false;
+var retroactiveNodeIndex = 0;
 
 
 document.addEventListener("DOMContentLoaded", SetupPage, false);
@@ -164,6 +168,7 @@ function FileReader_OnLoad(event)
 	saveButton.disabled = false;
 	addNodeButton.disabled = false;
 	startEndSectionButton.disabled = false;
+	startEndSectionButton.disabled = false;
 
 	DebugLog("Loaded: " + fileInputFile.name);
 }
@@ -190,6 +195,23 @@ function FormatTimeToString(timeInSeconds)
 		secondsString = "0" + secondsString;
 
 	return minutes + ":" + secondsString;
+}
+
+function GetTranscriptNodeIndexByTimeInSeconds(timeInSeconds)
+{
+	if(timeInSeconds < 0) return 0;
+
+	var transcriptNodeIndex = 0;
+
+	for(i = 0; i < transcriptText.length; i++)
+	{
+		if(ParseFormattedTimeStringToSeconds(transcriptTimes[i]) > timeInSeconds)
+			break;
+
+		transcriptNodeIndex = i;
+	}
+
+	return transcriptNodeIndex;
 }
 
 function LessonDetail_OnChanged(elementName)
@@ -372,8 +394,12 @@ function LoadTranscriptNodes()
 		if(i < transcriptNodes.length - 1)
 			shiftDownDisabled = "";
 
-		nodesTable.innerHTML += 
-			"<tr><td><div class='buttonGroup'><button class='nodeTableAction' " 
+		var retroactiveModeClass = "class='nodesTableRetro'";
+		if(!retroactiveModeStarted || retroactiveNodeIndex != i)
+			retroactiveModeClass = "";
+
+		nodesTable.innerHTML += "<tr " + retroactiveModeClass + ">" 
+			+ "<td><div class='buttonGroup'><button class='nodeTableAction' " 
 				+ "onclick='SeekInVideo(" + 
 				ParseFormattedTimeStringToSeconds(transcriptTimes[i]) + ")'>Seek</button>" 
 			+ "<button class='nodeTableAction' onclick='TranscriptRemoveNode(" + i + ")' " 
@@ -383,10 +409,12 @@ function LoadTranscriptNodes()
 			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", -1)'" 
 				+ shiftUpDisabled + ">🡹</button>"
 			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", 1)'" 
-				+ shiftDownDisabled + ">🡻</button></div></td>"
+				+ shiftDownDisabled + ">🡻</button></div>" 
+			+ "<div class='buttonGroup'><button class='nodeTableAction' onclick='" 
+				+ "StartRetroactiveMode(" + i + ")'>Retro.</button></div></td>"
 			+ "<td><input id='nodesTableCell_" + 0 + "_" + i + "' class='time' value='" + transcriptTimes[i] + 
-				"' onchange='NodesTable_OnChanged(" + 0 + "," + i + ")'></input>" 
-			+ "</td><td><textarea id='nodesTableCell_" + 1 + "_" + i + "' rows='3' cols='50'" 
+				"' onchange='NodesTable_OnChanged(" + 0 + "," + i + ")'></input></td>" 
+			+ "<td><textarea id='nodesTableCell_" + 1 + "_" + i + "' rows='3' cols='50'" 
 				+ "onchange='NodesTable_OnChanged(" + 1 + "," + i + ")'>" 
 				+ transcriptText[i] + "</textarea></td></tr>";
 	}
@@ -420,7 +448,8 @@ function LoadXMLSource()
 
 function New()
 {
-	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><title><en-us>(New Lesson)" 
+	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><editor_version>" + 
+		currentVersion + "</editor_version><title><en-us>(New Lesson)" 
 		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><languages><video_languages>en-us,zh-tw" 
 		+ "</video_languages><transcript_languages>en-us,zh-tw</transcript_languages>" 
 		+ "</languages><video><title><en-us>(Video Title)</en-us><zh-tw>(視頻標題)</zh-tw>" 
@@ -438,6 +467,7 @@ function New()
 
 	saveButton.disabled = false;
 	addNodeButton.disabled = false;
+	startEndSectionButton.disabled = false;
 	startEndSectionButton.disabled = false;
 
 	fileInput.value = '';
@@ -476,13 +506,35 @@ function OnKeyPress(event)
 	var char = event.which || event.keyCode;
 	// DebugLog("Unicode CHARACTER code: " + char);
 
-	// Equals / plus
-	if(char == 61)
-		TranscriptAddNode("0:00", "...");
+	if(!addNodeButton.disabled)
+	{
+		// Equals / plus
+		if(char == 61)
+			TranscriptAddNode("0:00", "...");
+	}
 
-	// Backslash
-	if(char == 92)
-		StartEndSection();
+	if(!startEndSectionButton.disabled)
+	{
+		if(retroactiveModeStarted)
+		{
+			// 'C' / 'V'
+			if(char == 99 || char == 118)
+				StartEndSection();
+		}
+		else
+		{
+			// Backslash
+			if(char == 92)
+				StartEndSection();
+		}
+	}
+
+	if(!startEndRetroactiveModeButton.disabled)
+	{
+		// Right square bracket
+		if(char == 93)
+			StartEndRetroactiveMode();
+	}
 }
 
 function onYouTubeIframeAPIReady() 
@@ -524,17 +576,24 @@ function ParseFormattedTimeStringToSeconds(formattedTimeString)
 {
 	var parts = formattedTimeString.split(':');
 
-	if(parts.length == 2)
-	{
-		var minutes = parseInt(parts[0]);
-		var seconds = parseInt(parts[1]);
+	if(parts.length != 2)
+		return -1;
 
-		seconds += (minutes * 60);
+	parts[0] = parts[0].trim();
+	parts[1] = parts[1].trim();
 
-		return seconds;
-	}
+	if(parts[0].length == 0 || parts[1].length != 2)
+		return -1;
 
-	return -1;
+	var minutes = parseInt(parts[0]);
+	var seconds = parseInt(parts[1]);
+
+	if(minutes == "NaN" || seconds == "NaN")
+		return -1;
+
+	seconds += (minutes * 60);
+
+	return seconds;
 }
 
 function ParseYouTubeVideoURLForVideoID(value)
@@ -612,6 +671,9 @@ function Save()
 
 function SaveXMLSource()
 {
+	var editorVersionNode = xmlDoc.getElementsByTagName("editor_version")[0];
+	editorVersionNode.childNodes[0].nodeValue = currentVersion;
+
 	for (i = 0; i < transcriptNodes.length; i++) 
 	{
 		var time = transcriptTimes[i];
@@ -639,6 +701,9 @@ function SeekInVideo(seconds)
 
 function SetupPage()
 {
+	document.getElementById("heading").innerHTML = "LangExcite Lesson Editor (v" + 
+		currentVersion + ")";
+
 	fileInput = document.getElementById("fileInput");
 
 	fileReader.addEventListener("load", FileReader_OnLoad);
@@ -666,6 +731,8 @@ function SetupPage()
 	addNodeButton.disabled = true;
 	startEndSectionButton = document.getElementById("startEndSectionButton");
 	startEndSectionButton.disabled = true;
+	startEndRetroactiveModeButton = document.getElementById("startEndRetroactiveModeButton");
+	startEndSectionButton.disabled = true;
 
 	transcriptLanguagesSelect = document.getElementById("transcriptLanguagesSelect");
 
@@ -679,7 +746,9 @@ function SetupPage()
 		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
 			+ "</button>" 
 		+ "<button class='nodeTableActionHalf' disabled='true'>🡹</button>"
-		+ "<button class='nodeTableActionHalf' disabled='true'>🡻</button></div></td>"
+		+ "<button class='nodeTableActionHalf' disabled='true'>🡻</button></div>" 
+		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>" 
+			+ "Retro.</button></div></td>"
 		+ "<td><input class='time' value='0:00'></input></td><td>" 
 		+ "<textarea rows='3' cols='50'></textarea></td></tr>";
 
@@ -689,6 +758,8 @@ function SetupPage()
 	videoPlayPauseButton = document.getElementById("videoPlayPauseButton");
 
 	currentTranscriptText = document.getElementById("currentTranscriptText");
+
+	New();
 }
 
 function SetupVideoView()
@@ -716,6 +787,43 @@ function SetupVideoPlayer()
 	});
 }
 
+
+function StartRetroactiveMode(atTranscriptNodeIndex)
+{
+	retroactiveModeStarted = true;
+	retroactiveNodeIndex = atTranscriptNodeIndex;
+
+	startEndSectionButton.innerHTML = "Start Section (C)";
+	startEndRetroactiveModeButton.innerHTML = "End Retroactive (])";
+
+	videoPlayPauseButton.disabled = true;
+
+	LoadTranscriptNodes();
+
+	DebugLog("Retroactive mode started.");
+}
+
+function StartEndRetroactiveMode()
+{
+	if(!retroactiveModeStarted)
+	{
+		StartRetroactiveMode(retroactiveNodeIndex);
+	}
+	else
+	{
+		retroactiveModeStarted = false;
+		sectionStarted = false;
+
+		startEndSectionButton.innerHTML = "Start Section (\\)";
+		startEndRetroactiveModeButton.innerHTML = "Start Retroactive (])";
+		videoPlayPauseButton.disabled = false;
+
+		LoadTranscriptNodes();
+
+		DebugLog("Retroactive mode ended.");
+	}
+}
+
 function StartEndSection()
 {
 	if(!sectionStarted)
@@ -727,7 +835,13 @@ function StartEndSection()
 
 		videoPlayer.playVideo();
 
-		startEndSectionButton.innerHTML = "End Section (\\)";
+		var commandKey = "\\";
+		if(retroactiveModeStarted)
+			commandKey = "V";
+
+		startEndSectionButton.innerHTML = "End Section (" + commandKey + ")";
+
+		startEndRetroactiveModeButton.disabled = true;
 		videoPlayPauseButton.disabled = true;
 
 		DebugLog("Section started at: " + FormatTimeToString(sectionTimeStartInSeconds) 
@@ -738,24 +852,48 @@ function StartEndSection()
 		sectionStarted = false;
 
 		var formattedTime = FormatTimeToString(sectionTimeStartInSeconds);
-		var timeExists = false;
 
-		for(i = 0; i < transcriptTimes.length; i++)
+		if(retroactiveModeStarted)
 		{
-			if(transcriptTimes[i] != formattedTime) 
-				continue;
+			transcriptTimes[retroactiveNodeIndex] = formattedTime;
 
-			timeExists = true;
-			break;
+			retroactiveNodeIndex++;
+
+			if(retroactiveNodeIndex >= transcriptNodes.length)
+				retroactiveNodeIndex = transcriptNodes.length - 1;
+
+			videoPlayer.pauseVideo();
+
+			startEndRetroactiveModeButton.disabled = false;
+		}
+		else
+		{
+			var timeExists = false;
+
+			for(i = 0; i < transcriptTimes.length; i++)
+			{
+				if(transcriptTimes[i] != formattedTime) 
+					continue;
+
+				timeExists = true;
+				break;
+			}
+
+			if(!timeExists)
+				TranscriptAddNode(formattedTime, "...");
+
+			videoPlayer.pauseVideo();
+
+			var commandKey = "\\";
+			if(retroactiveModeStarted)
+				commandKey = "C";
+
+			startEndSectionButton.innerHTML = "Start Section (" + commandKey + ")";
+
+			videoPlayPauseButton.disabled = false;
 		}
 
-		if(!timeExists)
-			TranscriptAddNode(formattedTime, "...");
-
-		videoPlayer.pauseVideo();
-
-		startEndSectionButton.innerHTML = "Start Section (\\)";
-		videoPlayPauseButton.disabled = false;
+		startEndRetroactiveModeButton.disabled = true;
 
 		SaveXMLSource();
 		LoadXMLSource();
@@ -764,6 +902,7 @@ function StartEndSection()
 			+ ".");
 	}
 }
+
 
 function StringIsValidYouTubeVideoURL(value)
 {
@@ -821,40 +960,43 @@ function TranscriptAddNode(time, text)
 
 function TranscriptRemoveNode(atIndex)
 {
-	if(atIndex >= 0 && atIndex < transcriptNodes.length && transcriptNodes.length > 1)
+	if(atIndex < 0 || atIndex >= transcriptNodes.length || transcriptNodes.length == 1)
+		return;
+	
+	var transcriptTimesNew = new Array(transcriptNodes.length - 1);
+	var transcriptTextNew = new Array(transcriptNodes.length - 1);
+
+	for(i = 0; i < transcriptNodes.length - 1; i++)
 	{
-		var transcriptTimesNew = new Array(transcriptNodes.length - 1);
-		var transcriptTextNew = new Array(transcriptNodes.length - 1);
-
-		for(i = 0; i < transcriptNodes.length - 1; i++)
+		if(i < atIndex)
 		{
-			if(i < atIndex)
-			{
-				transcriptTimesNew[i] = transcriptTimes[i];
-				transcriptTextNew[i] = transcriptText[i];
-			}
-			else
-			{
-				transcriptTimesNew[i] = transcriptTimes[i + 1];
-				transcriptTextNew[i] = transcriptText[i + 1];
-			}
+			transcriptTimesNew[i] = transcriptTimes[i];
+			transcriptTextNew[i] = transcriptText[i];
 		}
-
-		transcriptTimes = new Array(transcriptTimesNew.length);
-		transcriptText = new Array(transcriptTextNew.length);
-
-		for(i = 0; i < transcriptTimesNew.length; i++)
+		else
 		{
-			transcriptTimes[i] = transcriptTimesNew[i];
-			transcriptText[i] = transcriptTextNew[i];
+			transcriptTimesNew[i] = transcriptTimes[i + 1];
+			transcriptTextNew[i] = transcriptText[i + 1];
 		}
-
-		transcriptNodesRoot.removeChild(transcriptNodes[transcriptNodes.length - 1]);
-		transcriptNodes = xmlDoc.getElementsByTagName("node");
-
-		SaveXMLSource();
-		LoadXMLSource();
 	}
+
+	transcriptTimes = new Array(transcriptTimesNew.length);
+	transcriptText = new Array(transcriptTextNew.length);
+
+	for(i = 0; i < transcriptTimesNew.length; i++)
+	{
+		transcriptTimes[i] = transcriptTimesNew[i];
+		transcriptText[i] = transcriptTextNew[i];
+	}
+
+	transcriptNodesRoot.removeChild(transcriptNodes[transcriptNodes.length - 1]);
+	transcriptNodes = xmlDoc.getElementsByTagName("node");
+
+	if(retroactiveNodeIndex >= transcriptNodes.length)
+		retroactiveNodeIndex = transcriptNodes.length - 1;
+
+	SaveXMLSource();
+	LoadXMLSource();
 }
 
 function TranscriptShiftNode(atIndex, direction)
@@ -952,15 +1094,8 @@ function UpdateVideoTime()
 
 	videoTime.innerHTML =  currentTimeFormatted + " / " + FormatTimeToString(videoPlayer.getDuration());
 
-	var transcriptNodeIndex = 0;
-
-	for(i = 0; i < transcriptText.length; i++)
-	{
-		if(ParseFormattedTimeStringToSeconds(transcriptTimes[i]) > videoPlayer.getCurrentTime())
-			break;
-
-		transcriptNodeIndex = i;
-	}
+	var transcriptNodeIndex = GetTranscriptNodeIndexByTimeInSeconds(videoPlayer.
+		getCurrentTime());
 
 	currentTranscriptText.innerHTML = transcriptText[transcriptNodeIndex];
 

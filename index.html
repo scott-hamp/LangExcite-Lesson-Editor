@@ -10,10 +10,8 @@
 
     <body>
 
-		<table><tr><td>
-			<h2>LangExcite Lesson Editor (v0.1.2)</h2>
-			<h4>Developed by Scott Hamp</h4>
-		</table></td></tr>
+		<h2 id="heading">LangExcite Lesson Editor (v0.0.0)</h2>
+		<h4>Developed by Scott Hamp</h4>
 
 		<table>
 
@@ -71,7 +69,7 @@
 						</tr>
 						<tr>
 							<td>
-								<textarea id="xmlSourceTextArea" rows="10" cols="43" disabled="true">(Lesson XML)</textarea>
+								<textarea id="xmlSourceTextArea" rows="10" cols="48" disabled="true">(Lesson XML)</textarea>
 							</td>
 						</tr>
 					</table>
@@ -83,6 +81,7 @@
 							<td>
 								<button type="button" id="addNodeButton" onclick="TranscriptAddNode('>','...')">Add Node (+)</button>
 								<button type="button" id="startEndSectionButton" onclick="StartEndSection()">Start Section (\)</button>
+								<button type="button" id="startEndRetroactiveModeButton" onclick="StartEndRetroactiveMode()">Start Retroactive (])</button>
 							</td>
 						</tr>
 						<tr>
