@@ -153,11 +153,17 @@ function ChangeTranscriptLanguage()
 
 function DebugLog(text)
 {
+	if(text.length > 30)
+		text = text.substring(0, 30) + "...";
+
 	document.getElementById("debug").innerHTML = "<i>" + text + "</i>";
 }
 
 function DebugLogAdd(text)
 {
+	if(text.length > 30)
+		text = text.substring(0, 30) + "...";
+
 	document.getElementById("debug").innerHTML += "<i>" + text + "</i>";
 }
 
@@ -419,9 +425,9 @@ function LoadTranscriptNodes()
 			+ "<div class='buttonGroup'><button class='nodeTableAction' " 
 				+ "onclick='TranscriptSplitNode(" + i + ")'>Split</button>" 
 			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", -1)'" 
-				+ shiftUpDisabled + ">🡹</button>"
+				+ shiftUpDisabled + ">&#8593;</button>"
 			+ "<button class='nodeTableActionHalf' onclick='TranscriptShiftNode(" + i + ", 1)'" 
-				+ shiftDownDisabled + ">🡻</button></div>" 
+				+ shiftDownDisabled + ">&#8595;</button></div>" 
 			+ "<div class='buttonGroup'><button class='nodeTableAction' onclick='" 
 				+ "StartRetroactiveMode(" + i + ")'>Retro.</button></div></td>"
 			+ "<td><input id='nodesTableCell_" + 0 + "_" + i + "' class='time' value='" + transcriptTimes[i] + 
@@ -767,8 +773,8 @@ function SetupPage()
 		+ "<button class='nodeTableAction' disabled='true'>Remove</button><div>" 
 		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>Split" 
 			+ "</button>" 
-		+ "<button class='nodeTableActionHalf' disabled='true'>🡹</button>"
-		+ "<button class='nodeTableActionHalf' disabled='true'>🡻</button></div>" 
+		+ "<button class='nodeTableActionHalf' disabled='true'>&#8593;</button>"
+		+ "<button class='nodeTableActionHalf' disabled='true'>&#8595;</button></div>" 
 		+ "<div class='buttonGroup'><button class='nodeTableAction' disabled='true'>" 
 			+ "Retro.</button></div></td>"
 		+ "<td><input class='time' value='0:00'></input></td><td>" 
@@ -884,7 +890,7 @@ function StartEndSection()
 			if(retroactiveNodeIndex >= transcriptNodes.length)
 				retroactiveNodeIndex = transcriptNodes.length - 1;
 
-			videoPlayer.pauseVideo();
+			// videoPlayer.pauseVideo();
 
 			startEndRetroactiveModeButton.disabled = false;
 		}
