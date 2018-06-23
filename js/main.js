@@ -1,4 +1,4 @@
-﻿var currentVersion = "0.1.5";
+﻿var currentVersion = "0.1.6";
 
 var changesHaveBeenMadeSinceLastLoadOrSave = false;
 
@@ -38,6 +38,7 @@ var videoPlayer;
 var videoReady = false;
 var videoTime;
 var videoHasBeenPlayed = false;
+var videoPlayerSeekToSecondsOnStart = 0;
 
 var videoPlayPauseButton;
 
@@ -81,15 +82,19 @@ function ChangeLessonVideoID(fromURL)
 {
 	if(!StringIsValidYouTubeVideoURL(fromURL)) return;
 
-	fromURL = fromURL.trim();
-	fromURL = fromURL.replace("https://www.youtube.com/watch?v=", "");
+	var params = ParseYouTubeVideoURL(fromURL);
 
-	videoID = fromURL;
+	videoID = params[0];
+
+	if(params.length == 2)
+		videoPlayerSeekToSecondsOnStart = params[1];
 
 	lessonVideoURLInput.value = "https://www.youtube.com/watch?v=" + videoID;
 
 	var idNode = xmlDoc.getElementsByTagName("id")[0];
 	idNode.childNodes[0].nodeValue = videoID;
+
+	changeVideoIDButton.disabled = true;
 
 	SaveXMLSource();
 	ResetVideoView();
@@ -473,7 +478,7 @@ function New()
 	}
 
 	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><editor_version>" + 
-		currentVersion + "</editor_version><title><en-us>(New Lesson)" 
+		currentVersion + "</editor_version><name>NewLesson</name><title><en-us>(New Lesson)" 
 		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><languages><video_languages>en-us,zh-tw" 
 		+ "</video_languages><transcript_languages>en-us,zh-tw</transcript_languages>" 
 		+ "</languages><video><title><en-us>(Video Title)</en-us><zh-tw>(視頻標題)</zh-tw>" 
@@ -574,6 +579,13 @@ function OnPlayerReady(event)
 {
 	videoPlayerReady = true;
 
+	if(videoPlayerSeekToSecondsOnStart != 0)
+	{
+		SeekInVideo(videoPlayerSeekToSecondsOnStart);
+
+		videoPlayerSeekToSecondsOnStart = 0;
+	}
+
 	UpdateVideoTime();
 }
 
@@ -624,14 +636,27 @@ function ParseFormattedTimeStringToSeconds(formattedTimeString)
 	return seconds;
 }
 
-function ParseYouTubeVideoURLForVideoID(value)
+function ParseYouTubeVideoURL(value)
 {
+	var result = new Array();
+
 	if(!StringIsValidYouTubeVideoURL(value))
-		return "";
+		return result;
 
-	value = value.replace("https://www.youtube.com/watch?v=", "");
+	value = value.replace("https://www.youtube.com/watch?", "");
 
-	return value;
+	var params = value.split('&');
+
+	var id = params[0].replace("v=", "");
+	result.push(id);
+
+	if(params.length > 1)
+	{
+		var time = params[1].replace("t=", "");
+		result.push(time);
+	}
+
+	return result;
 }
 
 function PlayPauseVideo()
@@ -678,6 +703,12 @@ function Save()
 		fileInputFileName = lessonTitleInput.value.trim();
 
 		fileInputFileName = SanitizeFilename(fileInputFileName);
+
+		var lessonNameNode = xmlDoc.getElementsByTagName("name")[0];
+		lessonNameNode.childNodes[0].nodeValue = fileInputFileName;
+
+		SaveXMLSource();
+
 		fileInputFileName += ".xml";
 	}
 
@@ -939,9 +970,20 @@ function StringIsValidYouTubeVideoURL(value)
 	if(value.length == 0) return false;
 	if(!value.includes("https://www.youtube.com/watch?v=")) return false;
 
-	value = value.replace("https://www.youtube.com/watch?v=", "");
+	value = value.replace("https://www.youtube.com/watch?", "");
 
-	if(value.length != 11) return false;
+	var params = value.split('&');
+
+	if(params.length == 0 || params.length > 2) return false;
+
+	if(!params[0].includes("v=")) return false;
+
+	if(params.length > 1)
+	{
+		if(!params[1].includes("t=")) return false;
+	}
+
+	if(params[0].replace("v=", "").length != 11) return false;
 
 	return true;
 }
@@ -1114,11 +1156,16 @@ function TranscriptSplitNode(atIndex)
 
 function UpdateLessonVideoURLInput()
 {
-	var newVideoID = ParseYouTubeVideoURLForVideoID(lessonVideoURLInput.value);
-
 	var disabled = false;
 
-	if(newVideoID == "" || videoID == newVideoID)
+	if(StringIsValidYouTubeVideoURL(lessonVideoURLInput.value))
+	{
+		var newVideoID = ParseYouTubeVideoURL(lessonVideoURLInput.value)[0];
+
+		if(newVideoID == "" || videoID == newVideoID)
+			disabled = true;
+	}
+	else
 		disabled = true;
 
 	changeVideoIDButton.disabled = disabled;
