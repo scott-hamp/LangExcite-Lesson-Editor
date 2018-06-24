@@ -1,4 +1,4 @@
-﻿var currentVersion = "0.1.6";
+﻿var currentVersion = "0.1.7";
 
 var changesHaveBeenMadeSinceLastLoadOrSave = false;
 
@@ -421,7 +421,8 @@ function LoadTranscriptNodes()
 		if(!retroactiveModeStarted || retroactiveNodeIndex != i)
 			retroactiveModeClass = "";
 
-		nodesTable.innerHTML += "<tr " + retroactiveModeClass + ">" 
+		nodesTable.innerHTML += "<tr id='nodesTableRow_" + i + "' " 
+			+ retroactiveModeClass + ">" 
 			+ "<td><div class='buttonGroup'><button class='nodeTableAction' " 
 				+ "onclick='SeekInVideo(" + 
 				ParseFormattedTimeStringToSeconds(transcriptTimes[i]) + ")'>Seek</button>" 
@@ -550,9 +551,18 @@ function OnKeyPress(event)
 	{
 		if(retroactiveModeStarted)
 		{
-			// 'C' / 'V'
-			if(char == 99 || char == 118)
-				StartEndSection();
+			if(sectionStarted)
+			{
+				// 'V'
+				if(char == 118)
+					StartEndSection();
+			}
+			else
+			{
+				// 'C'
+				if(char == 99)
+					StartEndSection();
+			}
 		}
 		else
 		{
@@ -846,7 +856,6 @@ function SetupVideoPlayer()
 	});
 }
 
-
 function StartRetroactiveMode(atTranscriptNodeIndex)
 {
 	retroactiveModeStarted = true;
@@ -921,7 +930,12 @@ function StartEndSection()
 			if(retroactiveNodeIndex >= transcriptNodes.length)
 				retroactiveNodeIndex = transcriptNodes.length - 1;
 
-			// videoPlayer.pauseVideo();
+			retroactiveNodeRow = document.getElementById("nodesTableRow_" + 
+				retroactiveNodeIndex);
+
+			nodesTableArea.scrollTop = retroactiveNodeRow.offsetTop;
+
+			startEndSectionButton.innerHTML = "Start Section (C)";
 
 			startEndRetroactiveModeButton.disabled = false;
 		}
@@ -943,16 +957,10 @@ function StartEndSection()
 
 			videoPlayer.pauseVideo();
 
-			var commandKey = "\\";
-			if(retroactiveModeStarted)
-				commandKey = "C";
-
-			startEndSectionButton.innerHTML = "Start Section (" + commandKey + ")";
-
-			videoPlayPauseButton.disabled = false;
+			startEndSectionButton.innerHTML = "Start Section (\)";
 		}
 
-		startEndRetroactiveModeButton.disabled = true;
+		videoPlayPauseButton.disabled = false;
 
 		SaveXMLSource();
 		LoadXMLSource();
@@ -961,7 +969,6 @@ function StartEndSection()
 			+ ".");
 	}
 }
-
 
 function StringIsValidYouTubeVideoURL(value)
 {
