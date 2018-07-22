@@ -1,4 +1,4 @@
-﻿var currentVersion = "0.1.7";
+﻿var currentVersion = "0.1.8";
 
 var changesHaveBeenMadeSinceLastLoadOrSave = false;
 
@@ -60,6 +60,28 @@ window.onbeforeunload = function()
     return "Some changes have not been saved. Leave anyways?";
 }
 
+
+function ChangeLessonCategory(value)
+{
+	if(value.trim().length == 0) return;
+
+	var categoryNode = xmlDoc.getElementsByTagName("category")[0];
+
+	categoryNode.childNodes[0].nodeValue = value;
+
+	SaveXMLSource();
+}
+
+function ChangeLessonDifficulty(value)
+{
+	if(value.trim().length == 0) return;
+
+	var difficultyNode = xmlDoc.getElementsByTagName("difficulty")[0];
+
+	difficultyNode.childNodes[0].nodeValue = value;
+
+	SaveXMLSource();
+}
 
 function ChangeLessonTitle(titleIndex, value)
 {
@@ -246,6 +268,12 @@ function LessonDetail_OnChanged(elementName)
 	if(elementName == "lessonVideoURL")
 		ChangeLessonVideoID(lessonVideoURLInput.value);
 
+	if(elementName == "lessonCategorySelect")
+		ChangeLessonCategory(lessonCategorySelect.value);
+
+	if(elementName == "lessonDifficultySelect")
+		ChangeLessonDifficulty(lessonDifficultySelect.value);
+
 	if(elementName == "videoLanguageCheckbox")
 		ChangeLessonVideoLanguages();
 
@@ -337,6 +365,14 @@ function LoadLessonDetails()
 	lessonVideoTitleInput.value = titleElement.childNodes[0].nodeValue;
 
 	lessonVideoURLInput.value = "https://www.youtube.com/watch?v=" + videoID;
+
+	var categoryNode = xmlDoc.getElementsByTagName("category")[0];
+
+	lessonCategorySelect.value = categoryNode.childNodes[0].nodeValue;
+
+	var difficultyNode = xmlDoc.getElementsByTagName("difficulty")[0];
+
+	lessonDifficultySelect.value = difficultyNode.childNodes[0].nodeValue;
 
 	for(i = 0; i < videoLanguageCheckboxes.length; i++)
 	{
@@ -480,7 +516,8 @@ function New()
 
 	xmlSource = "<?xml version='1.0' encoding='utf-8'?><lesson><editor_version>" + 
 		currentVersion + "</editor_version><name>NewLesson</name><title><en-us>(New Lesson)" 
-		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><languages><video_languages>en-us,zh-tw" 
+		+ "</en-us><zh-tw>(新的課程)</zh-tw></title><category>general</category>" 
+		+ "<difficulty>0</difficulty><languages><video_languages>en-us,zh-tw" 
 		+ "</video_languages><transcript_languages>en-us,zh-tw</transcript_languages>" 
 		+ "</languages><video><title><en-us>(Video Title)</en-us><zh-tw>(視頻標題)</zh-tw>" 
 		+ "</title><id>AUl771jkMqk</id></video><transcript><nodes><node><time>0:00</time>" 
@@ -778,10 +815,16 @@ function SetupPage()
 	fileReader.addEventListener("load", FileReader_OnLoad);
 
 	lessonTitleInput = document.getElementById("lessonTitleInput"); 
+
 	lessonVideoTitleInput = document.getElementById("lessonVideoTitleInput"); 
+
 	lessonVideoURLInput = document.getElementById("lessonVideoURLInput"); 
 	changeVideoIDButton = document.getElementById("changeVideoIDButton");
 	changeVideoIDButton.disabled = true;
+
+	lessonCategorySelect = document.getElementById("lessonCategorySelect"); 
+
+	lessonDifficultySelect = document.getElementById("lessonDifficultySelect"); 
 
 	videoLanguageCheckboxes = document.getElementsByName("videoLanguageCheckbox");
 	for(i = 0; i < videoLanguageCheckboxes.length; i++)

@@ -37,6 +37,31 @@
 									<input id="lessonTitleInput" class="title" 
 									onchange="LessonDetail_OnChanged('lessonTitleInput')">
 									</input></span>
+								<span class="lessonDetails">Category:  
+									<select id="lessonCategorySelect" onchange=
+										"LessonDetail_OnChanged('lessonCategorySelect')">>
+										<option value="child-friendly">Child-Friendly</option>
+										<option value="art-and-design">Art & Design</option>
+										<option value="fashion">Fashion</option>
+										<option value="food">Food</option>
+										<option value="general">General</option>
+										<option value="news">News</option>
+										<option value="science">Science</option>
+										<option value="sports">Sports</option>
+										<option value="travel">Travel</option>
+									</select>
+								</span>
+								<span class="lessonDetails">Difficulty:  
+									<select id="lessonDifficultySelect" onchange=
+										"LessonDetail_OnChanged('lessonDifficultySelect')">
+										<option value="0">Beginner (A1)</option>
+										<option value="1">Elementary (A2)</option>
+										<option value="2">Intermediate (B1)</option>
+										<option value="3">Upper-Intermediate (B2)</option>
+										<option value="4">Advanced (C1)</option>
+										<option value="5">Master (C2)</option>
+									</select>
+								</span>
 								<span class="lessonDetails">Video Title: 
 									<input id="lessonVideoTitleInput" class="title"
 									onchange="LessonDetail_OnChanged('lessonVideoTitleInput')">
@@ -70,7 +95,8 @@
 						</tr>
 						<tr>
 							<td>
-								<textarea id="xmlSourceTextArea" rows="10" cols="48" disabled="true">(Lesson XML)</textarea>
+								<textarea id="xmlSourceTextArea" rows="7" cols="48" 
+									disabled="true">(Lesson XML)</textarea>
 							</td>
 						</tr>
 					</table>
